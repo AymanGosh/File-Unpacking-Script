@@ -41,7 +41,6 @@ dfs() {
                     file_name1=${base_path%.*.*}
                     # After unpacking, call dfs again on the extracted directory
                     if [ -d "$dir"/"$file_name1" ]; then
-                        echo "Entering extracted directory: $file"
                         dfs "$dir"/"$file_name1"
                     fi
                     ;;
