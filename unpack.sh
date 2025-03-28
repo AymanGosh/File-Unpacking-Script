@@ -52,3 +52,9 @@ dfs() {
 # Start DFS from the current directory
 start_dir=$(pwd)  # Get the current directory
 dfs "$start_dir"
+
+# To-Do:
+# 1. Implement filtering using command-line arguments
+#    1.1. Support filtering with/without the "v" option
+#    1.2. Support filtering with/without the "r" option
+# 2. Add support for handling files via command-line arguments
