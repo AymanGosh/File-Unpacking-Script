@@ -9,4 +9,4 @@
 
 ## 2. Add Support for Handling Files via Command-Line Arguments
 
-## 3. Scoring Criteria 
+## 3. Scoring cc 
