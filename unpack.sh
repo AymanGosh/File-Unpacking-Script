@@ -36,6 +36,13 @@ handle_archive() {
     extract_dir="$temp_dir/${file_name}_extracted_${base_name##*.}"
     mkdir -p "$extract_dir"
 
+    if [ "$verbose" = true ]; then
+        echo "Unpacking" $file_name
+    fi
+    
+
+
+
     case "$file" in
         *.tar.gz|*.tgz)
             tar -xzf "$file" -C "$extract_dir" || { echo "Failed to unpack $file"; return 1; }
@@ -55,10 +62,6 @@ handle_archive() {
         *.bz2)
             bunzip2 -c "$file" > "$extract_dir/${base_name%.*}" || { echo "Failed to unpack $file"; return 1; }
             ;;
-        *)
-            echo "Unsupported archive type: $file"
-            return 1
-            ;;
     esac
 
     # Immediately scan the extracted directory for more archives
@@ -75,7 +78,7 @@ dfs() {
     local dir="$1"
     
     # if -v
-    echo "Scanning directory: $dir"
+    #echo "Scanning directory: $dir"
 
     # Loop through all files and directories in the current directory
     for file in "$dir"/*; do
@@ -86,11 +89,18 @@ dfs() {
             # If it's an archive, unpack it
             case "$file" in
                 *.tar.gz|*.tgz|*.tar.bz2|*.tbz|*.tar|*.zip|*.gz|*.bz2|*.Z)
+                    
                     handle_archive "$file" "$dir"
                     ;;
                 *)
-                    echo "Unsupported archive type: $file"
+                    #echo "Unsupported archive type: $file"
+                    if [ "$verbose" = true ]; then
+                        base_name=$(basename "$file")  # Get filename with extension
+                        file_name="${base_name%.*}"    # Remove only last extension (keeps base name)
+                        echo "Ignoring " $file_name
+                    fi
                     ;;
+                    
             esac
         fi
     done
@@ -104,11 +114,16 @@ for file in "$@"; do
                 handle_archive "$file" "$(pwd)"
                 ;;
             *)
-                echo "Unsupported archive type: $file"
+                #echo "Unsupported archive type: $file"
+                if [ "$verbose" = true ]; then
+                    base_name=$(basename "$file")  # Get filename with extension
+                    file_name="${base_name%.*}"    # Remove only last extension (keeps base name)
+                    echo "Ignoring " $file_name
+                fi
                 ;;
         esac
-    else
-        echo "File not found: $file"
+    #else
+        #echo "File not found: $file"
     fi
 done
 
