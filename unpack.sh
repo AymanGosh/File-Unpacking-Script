@@ -1,5 +1,28 @@
 #!/bin/bash
-# Function to handle archives and unpack them if necessary
+
+# Default values
+recursive=false
+verbose=false
+
+# Parse options
+while getopts "rv" opt; do
+    case "$opt" in
+        r) recursive=true ;;
+        v) verbose=true ;;
+        ?) echo "Usage: $0 [-r] [-v] file [files...]"
+           exit 1 ;;
+    esac
+done
+
+# Remove parsed options from arguments
+shift $((OPTIND - 1))
+
+# Ensure at least one file is provided
+if [ $# -lt 1 ]; then
+    echo "Error: At least one file must be specified."
+    echo "Usage: $0 [-r] [-v] file [files...]"
+    exit 1
+fi
 
 
 handle_archive() {
@@ -12,8 +35,6 @@ handle_archive() {
     # Create a unique extraction path based on both base name and file extension
     extract_dir="$temp_dir/${file_name}_extracted_${base_name##*.}"
     mkdir -p "$extract_dir"
-
-    echo "Extracting $file into $extract_dir..."
 
     case "$file" in
         *.tar.gz|*.tgz)
@@ -41,7 +62,11 @@ handle_archive() {
     esac
 
     # Immediately scan the extracted directory for more archives
-    dfs "$extract_dir"
+ 
+    if [ "$recursive" = true ]; then
+         dfs "$extract_dir"
+    fi
+   
 }
 
 
@@ -49,6 +74,7 @@ handle_archive() {
 dfs() {
     local dir="$1"
     
+    # if -v
     echo "Scanning directory: $dir"
 
     # Loop through all files and directories in the current directory
@@ -62,11 +88,28 @@ dfs() {
                 *.tar.gz|*.tgz|*.tar.bz2|*.tbz|*.tar|*.zip|*.gz|*.bz2|*.Z)
                     handle_archive "$file" "$dir"
                     ;;
+                *)
+                    echo "Unsupported archive type: $file"
+                    ;;
             esac
         fi
     done
 }
 
-# Start DFS from the current directory
-start_dir=$(pwd)  # Get the current directory
-dfs "$start_dir"
+for file in "$@"; do
+    if [ -f "$file" ]; then
+        # Extract the archive
+        case "$file" in
+            *.tar.gz|*.tgz|*.tar.bz2|*.tbz|*.tar|*.zip|*.gz|*.bz2|*.Z)
+                handle_archive "$file" "$(pwd)"
+                ;;
+            *)
+                echo "Unsupported archive type: $file"
+                ;;
+        esac
+    else
+        echo "File not found: $file"
+    fi
+done
+
+

@@ -11,6 +11,8 @@
 - [ ] Support filtering with/without the "v" option
 - [ ] Support filtering with/without the "r" option
 
-## 2. Add Support for Handling Files via Command-Line Arguments
+## 2. c
 
-## 3. Scoring cc 
+## 3. counting 
+
+## 4. Scoring cc 
