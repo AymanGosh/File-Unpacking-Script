@@ -7,6 +7,4 @@
 
 # To-Do
 
-## 3. counting 
-
 ## 4. Scoring cc 

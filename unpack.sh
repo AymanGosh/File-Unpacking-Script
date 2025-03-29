@@ -3,7 +3,7 @@
 # Default values
 recursive=false
 verbose=false
-
+counter=0 
 # Parse options
 while getopts "rv" opt; do
     case "$opt" in
@@ -45,22 +45,28 @@ handle_archive() {
 
     case "$file" in
         *.tar.gz|*.tgz)
-            tar -xzf "$file" -C "$extract_dir" || { echo "Failed to unpack $file"; return 1; }
+            tar -xzf "$file" -C "$extract_dir" || { echo "Failed to unpack $file";}
+            ((counter+=1)) 
             ;;
         *.tar.bz2|*.tbz)
-            tar -xjf "$file" -C "$extract_dir" || { echo "Failed to unpack $file"; return 1; }
+            tar -xjf "$file" -C "$extract_dir" || { echo "Failed to unpack $file"; }
+            ((counter+=1)) 
             ;;
         *.tar)
-            tar -xf "$file" -C "$extract_dir" || { echo "Failed to unpack $file"; return 1; }
+            tar -xf "$file" -C "$extract_dir" || { echo "Failed to unpack $file";   }
+            ((counter+=1)) 
             ;;
         *.zip)
-            unzip -q "$file" -d "$extract_dir" || { echo "Failed to unpack $file"; return 1; }
+            unzip -q "$file" -d "$extract_dir" || { echo "Failed to unpack $file";   }
+            ((counter+=1)) 
             ;;
         *.gz)
-            gunzip -c "$file" > "$extract_dir/${base_name%.*}" || { echo "Failed to unpack $file"; return 1; }
+            gunzip -c "$file" > "$extract_dir/${base_name%.*}" || { echo "Failed to unpack $file";  }
+            ((counter+=1)) 
             ;;
         *.bz2)
-            bunzip2 -c "$file" > "$extract_dir/${base_name%.*}" || { echo "Failed to unpack $file"; return 1; }
+            bunzip2 -c "$file" > "$extract_dir/${base_name%.*}" || { echo "Failed to unpack $file";  }
+            ((counter+=1)) 
             ;;
     esac
 
@@ -125,6 +131,8 @@ for file in "$@"; do
     #else
         #echo "File not found: $file"
     fi
+    
 done
 
 
+echo "Decompressed $counter archive(s)"
