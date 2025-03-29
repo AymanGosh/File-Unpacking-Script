@@ -1,5 +1,9 @@
 # File-Unpacking-Script
 
+## HOW TO RUN :
+ 
+### USING THE TERMINAL:
+#### 1. ./unpack.sh 
 
 # To-Do
 
