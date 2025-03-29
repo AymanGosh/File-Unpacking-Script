@@ -9,9 +9,7 @@
 
 ## 1. Implement Filtering Using Command-Line Arguments
 - [ ] Support filtering with/without the "v" option
-- [ ] Support filtering with/without the "r" option
 
-## 2. c
 
 ## 3. counting 
 
