@@ -15,6 +15,7 @@ while getopts "rv" opt; do
            exit 1 ;;
     esac
 done
+
 # Remove parsed options from arguments
 shift $((OPTIND - 1))
 # Ensure at least one file is provided
@@ -26,9 +27,9 @@ fi
 
 
 extract_file() {
-    
     local entry="$1"
     msg="Unpacking $entry"
+    
     case "$entry" in
         *.tar.gz|*.tgz)
             new_dir="${entry%.*}"  # Remove .tar.gz
@@ -79,12 +80,10 @@ extract_file() {
     esac
     [[ "$verbose" == true ]] && echo $msg
     (( decompressed_counter++ ))
-  
 }
 
 
 extract_and_queue() {
-
     while [[ ${#queue[@]} -gt 0 ]]; do
         current_dir="${queue[0]}"
         queue=("${queue[@]:1}")  # Remove first element
@@ -107,20 +106,25 @@ extract_and_queue() {
 
 
 for file in "$@"; do
-    if [ -f "$file" ]; then
+    
+    # Use find to search for both files and directories with the given name and any extension for files
+    results=($(find . -name "$file*" ))
+    
+    for result in "${results[@]}"; do
+        
+        file=${result#./}
+        if [ -f "$file" ]; then
         extract_file $file
-    fi
-    
-    if [[ -d "$file" ]] && [[ "$recursive" == true ]]; then
-        queue+=("$file")
-    fi
-    
-    extract_and_queue
+        fi
+        
+        if [[ -d "$file" ]] && [[ "$recursive" == true ]]; then
+            queue+=("$file")
+        fi
+        
+        extract_and_queue
 
+    done
 done
-
 
 echo "Decompressed $decompressed_counter archive(s)"
 exit $failure_counter
-
-# TODO : print -v
