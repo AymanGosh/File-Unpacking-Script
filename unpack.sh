@@ -28,6 +28,7 @@ fi
 extract_file() {
     
     local entry="$1"
+    msg="Unpacking $entry"
     case "$entry" in
         *.tar.gz|*.tgz)
             new_dir="${entry%.*}"  # Remove .tar.gz
@@ -71,11 +72,12 @@ extract_file() {
             [[ "$recursive" == true ]] && queue+=("$new_dir")
             ;;
         *)
+            [[ "$verbose" == true ]] && echo "Ignoring $entry"
             (( failure_counter++ ))
             return
             ;;
     esac
-
+    [[ "$verbose" == true ]] && echo $msg
     (( decompressed_counter++ ))
   
 }
@@ -121,4 +123,4 @@ done
 echo "Decompressed $decompressed_counter archive(s)"
 exit $failure_counter
 
-# TODO : print -v / dont remove archived 
+# TODO : print -v
