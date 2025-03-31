@@ -31,37 +31,43 @@ extract_file() {
     case "$entry" in
         *.tar.gz|*.tgz)
             new_dir="${entry%.*}"  # Remove .tar.gz
-            rm -rf "$new_dir"
             mkdir -p "$new_dir"
-            tar -xzf "$entry" -C "$new_dir" > /dev/null 2>&1 && rm "$entry"
+            tar -xzf "$entry" -C "$new_dir" > /dev/null 2>&1
             [[ "$recursive" == true ]] && queue+=("$new_dir")
             ;;
         *.tar.bz2)
             new_dir="${entry%.*}"
-            rm -rf "$new_dir"
             mkdir -p "$new_dir"
-            tar -xjf "$entry" -C "$new_dir" > /dev/null 2>&1 && rm "$entry"
+            tar -xjf "$entry" -C "$new_dir" > /dev/null 2>&1
             [[ "$recursive" == true ]] && queue+=("$new_dir")
             ;;
         *.bz2)
-            bunzip2 -f "$entry" > /dev/null 2>&1
+            if [[ "$(file "$entry")" == *"tar archive"* ]]; then
+                new_dir="${entry%.*}"
+                mkdir -p "$new_dir"
+                tar -xzf "$entry" -C "$new_dir" > /dev/null 2>&1
+                [[ "$recursive" == true ]] && queue+=("$new_dir")
+            else
+                bunzip2 -kf "$entry" > /dev/null 2>&1
+            fi
             ;;
         *.gz)
             if [[ "$(file "$entry")" == *"tar archive"* ]]; then
-                rm -rf "$new_dir"
                 new_dir="${entry%.*}"
                 mkdir -p "$new_dir"
-                tar -xzf "$entry" -C "$new_dir" > /dev/null 2>&1 && rm "$entry"
+                tar -xzf "$entry" -C "$new_dir" > /dev/null 2>&1
                 [[ "$recursive" == true ]] && queue+=("$new_dir")
             else
-                gunzip -f "$entry" > /dev/null 2>&1
+                gunzip -kf "$entry" > /dev/null 2>&1
             fi
             ;;
         *.zip)
             new_dir="${entry%.*}"
-            rm -rf "$new_dir"
+            if [[ -e "$new_dir" ]]; then
+                rm -rf "$new_dir" 
+            fi
             mkdir -p "$new_dir"
-            unzip -o "$entry" -d "$new_dir" > /dev/null 2>&1 && rm "$entry"
+            unzip -o "$entry" -d "$new_dir" > /dev/null 2>&1
             [[ "$recursive" == true ]] && queue+=("$new_dir")
             ;;
         *)
@@ -69,6 +75,7 @@ extract_file() {
             return
             ;;
     esac
+
     (( decompressed_counter++ ))
   
 }
