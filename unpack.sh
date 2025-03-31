@@ -20,89 +20,97 @@ if [ $# -lt 1 ]; then
     echo "Usage: $0 [-r] [-v] file [files...]"
     exit 1
 fi
-handle_archive() {
-    local file="$1"
-    local temp_dir="$2"
-    base_name=$(basename "$file")  # Get filename with extension
-    file_name="${base_name%.*}"    # Remove only last extension (keeps base name)
-    # Create a unique extraction path based on both base name and file extension
-    extract_dir="$temp_dir/${file_name}_extracted_${base_name##*.}"
-    mkdir -p "$extract_dir"
-    if [ "$verbose" = true ]; then
-        echo "Unpacking" $file_name
-    fi
-    case "$file" in
-        *.tar.gz|*.tgz)
-            tar -xzf "$file" -C "$extract_dir" || { echo "Failed to unpack $file";}
-            ((counter+=1)) 
-            ;;
-        *.tar.bz2|*.tbz)
-            tar -xjf "$file" -C "$extract_dir" || { echo "Failed to unpack $file"; }
-            ((counter+=1)) 
-            ;;
-        *.tar)
-            tar -xf "$file" -C "$extract_dir" || { echo "Failed to unpack $file";   }
-            ((counter+=1)) 
-            ;;
-        *.zip)
-            unzip -q "$file" -d "$extract_dir" || { echo "Failed to unpack $file";   }
-            ((counter+=1)) 
-            ;;
-        *.gz)
-            gunzip -c "$file" > "$extract_dir/${base_name%.*}" || { echo "Failed to unpack $file";  }
-            ((counter+=1)) 
-            ;;
-        *.bz2)
-            bunzip2 -c "$file" > "$extract_dir/${base_name%.*}" || { echo "Failed to unpack $file";  }
-            ((counter+=1)) 
-            ;;
-    esac
-    # Immediately scan the extracted directory for more archives
-    if [ "$recursive" = true ]; then
-         dfs "$extract_dir"
-    fi
-}
-# DFS function to explore directories
-dfs() {
+
+
+
+extract_and_queue() {
     local dir="$1"
-    # Loop through all files and directories in the current directory
-    for file in "$dir"/*; do
-        if [ -d "$file" ]; then
-            # If it's a directory, recursively scan it
-            dfs "$file"
-        elif [ -f "$file" ]; then
-            # If it's an archive, unpack it
-            case "$file" in
-                *.tar.gz|*.tgz|*.tar.bz2|*.tbz|*.tar|*.zip|*.gz|*.bz2|*.Z)
-                    handle_archive "$file" "$dir"
+    local queue=("$dir")
+
+    while [[ ${#queue[@]} -gt 0 ]]; do
+        current_dir="${queue[0]}"
+        queue=("${queue[@]:1}")  # Remove first element
+
+        echo "Processing directory: $current_dir"
+
+        # Loop through files in the directory
+        for entry in "$current_dir"/*; do
+            [[ -e "$entry" ]] || continue  # Skip if no files exist
+
+            # Check if it's a directory and add it to the queue
+            if [[ -d "$entry" ]]; then
+                echo "Found directory: $entry"
+                queue+=("$entry")
+                continue  # Skip extraction, process next entry
+            fi
+
+            case "$entry" in
+                *.tar.gz|*.tgz)
+                    echo "Extracting: $entry"
+                    new_dir="${entry%.*}"  # Remove .tar.gz
+                    rm -rf "$new_dir"
+                    mkdir -p "$new_dir"
+                    tar -xzf "$entry" -C "$new_dir" && rm "$entry"
+                    queue+=("$new_dir")  # Add to queue
                     ;;
-                *)
-                    #echo "Unsupported archive type: $file"
-                    if [ "$verbose" = true ]; then
-                        base_name=$(basename "$file")  # Get filename with extension
-                        file_name="${base_name%.*}"    # Remove only last extension (keeps base name)
-                        echo "Ignoring " $file_name
+                *.tar.bz2)
+                    echo "Extracting: $entry"
+                    new_dir="${entry%.*}"
+                    rm -rf "$new_dir"
+                    mkdir -p "$new_dir"
+                    tar -xjf "$entry" -C "$new_dir" && rm "$entry"
+                    queue+=("$new_dir")
+                    ;;
+                *.bz2)
+                    echo "Extracting: $entry"
+                    bunzip2 -f "$entry"
+                    ;;
+                *.gz)
+                    if [[ "$(file "$entry")" == *"tar archive"* ]]; then
+                        echo "Extracting: $entry"
+                        rm -rf "$new_dir"
+                        new_dir="${entry%.*}"
+                        mkdir -p "$new_dir"
+                        tar -xzf "$entry" -C "$new_dir" && rm "$entry"
+                        queue+=("$new_dir")
+                    else
+                        gunzip -f "$entry"
                     fi
-                    ;; 
+                    ;;
+                *.zip)
+                    echo "Extracting: $entry"
+                    new_dir="${entry%.*}"
+                    rm -rf "$new_dir"
+                    mkdir -p "$new_dir"
+                    unzip -o "$entry" -d "$new_dir" && rm "$entry"
+                    queue+=("$new_dir")
+                    ;;
             esac
-        fi
+        done
     done
 }
-for file in "$@"; do
-    if [ -f "$file" ]; then
-        # Extract the archive
-        case "$file" in
-            *.tar.gz|*.tgz|*.tar.bz2|*.tbz|*.tar|*.zip|*.gz|*.bz2|*.Z)
-                handle_archive "$file" "$(pwd)"
-                ;;
-            *)
-                if [ "$verbose" = true ]; then
-                    base_name=$(basename "$file")  # Get filename with extension
-                    file_name="${base_name%.*}"    # Remove only last extension (keeps base name)
-                    echo "Ignoring " $file_name
-                fi
-                ;;
-        esac
-    fi
-done
+
+
+
+
+# Call the function with an optional directory argument
+extract_and_queue "$(pwd)"
+
+# for file in "$@"; do
+#     if [ -f "$file" ]; then
+#         # Extract the archive
+#         case "$file" in
+#             *.tar.gz|*.tgz|*.tar.bz2|*.tbz|*.tar|*.zip|*.gz|*.bz2|*.Z)
+#                 handle_archive "$file" "$(pwd)"
+#                 ;;
+#             *)
+#                 if [ "$verbose" = true ]; then
+#                     base_name=$(basename "$file")  # Get filename with extension
+#                     file_name="${base_name%.*}"    # Remove only last extension (keeps base name)
+#                     echo "Ignoring " $file_name
+#                 fi
+#                 ;;
+#         esac
+#     fi
+# done
 echo "Decompressed $counter archive(s)"
