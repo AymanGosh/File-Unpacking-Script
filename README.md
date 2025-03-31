@@ -75,8 +75,3 @@ Decompressed 3 archive(s)
 ```
 - The contents of all archives in `some-directory` were extracted into `~/my-folder`.
 - Command returned `0` (success).
-
-
-# To-Do
-
-## 4. Scoring cc 
