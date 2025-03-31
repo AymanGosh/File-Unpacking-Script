@@ -24,6 +24,54 @@ if [ $# -lt 1 ]; then
 fi
 
 
+extract_file() {
+    
+    local entry="$1"
+    local -n queue_ref="$2"  # Use a reference to the queue passed from the main function
+    case "$entry" in
+        *.tar.gz|*.tgz)
+            new_dir="${entry%.*}"  # Remove .tar.gz
+            rm -rf "$new_dir"
+            mkdir -p "$new_dir"
+            tar -xzf "$entry" -C "$new_dir" > /dev/null 2>&1 && rm "$entry"
+            [[ "$recursive" == true ]] && queue_ref+=("$new_dir")
+            ;;
+        *.tar.bz2)
+            new_dir="${entry%.*}"
+            rm -rf "$new_dir"
+            mkdir -p "$new_dir"
+            tar -xjf "$entry" -C "$new_dir" > /dev/null 2>&1 && rm "$entry"
+            [[ "$recursive" == true ]] && queue_ref+=("$new_dir")
+            ;;
+        *.bz2)
+            bunzip2 -f "$entry" > /dev/null 2>&1
+            ;;
+        *.gz)
+            if [[ "$(file "$entry")" == *"tar archive"* ]]; then
+                rm -rf "$new_dir"
+                new_dir="${entry%.*}"
+                mkdir -p "$new_dir"
+                tar -xzf "$entry" -C "$new_dir" > /dev/null 2>&1 && rm "$entry"
+                [[ "$recursive" == true ]] && queue_ref+=("$new_dir")
+            else
+                gunzip -f "$entry" > /dev/null 2>&1
+            fi
+            ;;
+        *.zip)
+            new_dir="${entry%.*}"
+            rm -rf "$new_dir"
+            mkdir -p "$new_dir"
+            unzip -o "$entry" -d "$new_dir" > /dev/null 2>&1 && rm "$entry"
+            [[ "$recursive" == true ]] && queue_ref+=("$new_dir")
+            ;;
+        *)
+            (( failure_counter++ ))
+            return
+            ;;
+    esac
+    (( decompressed_counter++ ))
+}
+
 
 extract_and_queue() {
     local queue="$1"
@@ -42,52 +90,9 @@ extract_and_queue() {
                 [[ "$recursive" == true ]] && queue+=("$entry")
                 continue  # Skip extraction, process next entry
             fi
-
-            case "$entry" in
-                *.tar.gz|*.tgz)
-                    new_dir="${entry%.*}"  # Remove .tar.gz
-                    rm -rf "$new_dir"
-                    mkdir -p "$new_dir"
-                    tar -xzf "$entry" -C "$new_dir" > /dev/null 2>&1 && rm "$entry"
-                    [[ "$recursive" == true ]] && queue+=("$new_dir")
-                    ;;
-                *.tar.bz2)
-                    new_dir="${entry%.*}"
-                    rm -rf "$new_dir"
-                    mkdir -p "$new_dir"
-                    tar -xjf "$entry" -C "$new_dir" > /dev/null 2>&1 && rm "$entry"
-
-                    [[ "$recursive" == true ]] && queue+=("$new_dir")
-                    ;;
-                *.bz2)
-                    bunzip2 -f "$entry" > /dev/null 2>&1
-                    ;;
-                *.gz)
-                    if [[ "$(file "$entry")" == *"tar archive"* ]]; then
-                        rm -rf "$new_dir"
-                        new_dir="${entry%.*}"
-                        mkdir -p "$new_dir"
-                        tar -xzf "$entry" -C "$new_dir" > /dev/null 2>&1 && rm "$entry"
-                        [[ "$recursive" == true ]] && queue+=("$new_dir")
-                    else
-                        gunzip -f "$entry" > /dev/null 2>&1
-                    fi
-                    ;;
-                *.zip)
-                    new_dir="${entry%.*}"
-                    rm -rf "$new_dir"
-                    mkdir -p "$new_dir"
-                    unzip -o "$entry" -d "$new_dir" > /dev/null 2>&1 && rm "$entry"
-
-                    [[ "$recursive" == true ]] && queue+=("$new_dir")
-                    ;;
-                *)
-                    (( failure_counter++ ))
-                    continue 
-                    ;;
             
-            esac
-            (( decompressed_counter++ ))
+            extract_file "$entry" queue
+            
         done
     done
 }
@@ -95,8 +100,10 @@ extract_and_queue() {
 
 
 
-# Call the function with an optional directory argument
 extract_and_queue "$(pwd)"
+
+# queue=()
+# extract_file "$(pwd)"/develeap-bash.zip queue
 
 # for file in "$@"; do
 #     if [ -f "$file" ]; then
