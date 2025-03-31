@@ -2,7 +2,9 @@
 # Default values
 recursive=false
 verbose=false
-counter=0 
+decompressed_counter=0 
+failure_counter=0 
+
 # Parse options
 while getopts "rv" opt; do
     case "$opt" in
@@ -24,14 +26,12 @@ fi
 
 
 extract_and_queue() {
-    local dir="$1"
-    local queue=("$dir")
+    local queue="$1"
+
 
     while [[ ${#queue[@]} -gt 0 ]]; do
         current_dir="${queue[0]}"
         queue=("${queue[@]:1}")  # Remove first element
-
-        echo "Processing directory: $current_dir"
 
         # Loop through files in the directory
         for entry in "$current_dir"/*; do
@@ -39,53 +39,55 @@ extract_and_queue() {
 
             # Check if it's a directory and add it to the queue
             if [[ -d "$entry" ]]; then
-                echo "Found directory: $entry"
-                queue+=("$entry")
+                [[ "$recursive" == true ]] && queue+=("$entry")
                 continue  # Skip extraction, process next entry
             fi
 
             case "$entry" in
                 *.tar.gz|*.tgz)
-                    echo "Extracting: $entry"
                     new_dir="${entry%.*}"  # Remove .tar.gz
                     rm -rf "$new_dir"
                     mkdir -p "$new_dir"
-                    tar -xzf "$entry" -C "$new_dir" && rm "$entry"
-                    queue+=("$new_dir")  # Add to queue
+                    tar -xzf "$entry" -C "$new_dir" > /dev/null 2>&1 && rm "$entry"
+                    [[ "$recursive" == true ]] && queue+=("$new_dir")
                     ;;
                 *.tar.bz2)
-                    echo "Extracting: $entry"
                     new_dir="${entry%.*}"
                     rm -rf "$new_dir"
                     mkdir -p "$new_dir"
-                    tar -xjf "$entry" -C "$new_dir" && rm "$entry"
-                    queue+=("$new_dir")
+                    tar -xjf "$entry" -C "$new_dir" > /dev/null 2>&1 && rm "$entry"
+
+                    [[ "$recursive" == true ]] && queue+=("$new_dir")
                     ;;
                 *.bz2)
-                    echo "Extracting: $entry"
-                    bunzip2 -f "$entry"
+                    bunzip2 -f "$entry" > /dev/null 2>&1
                     ;;
                 *.gz)
                     if [[ "$(file "$entry")" == *"tar archive"* ]]; then
-                        echo "Extracting: $entry"
                         rm -rf "$new_dir"
                         new_dir="${entry%.*}"
                         mkdir -p "$new_dir"
-                        tar -xzf "$entry" -C "$new_dir" && rm "$entry"
-                        queue+=("$new_dir")
+                        tar -xzf "$entry" -C "$new_dir" > /dev/null 2>&1 && rm "$entry"
+                        [[ "$recursive" == true ]] && queue+=("$new_dir")
                     else
-                        gunzip -f "$entry"
+                        gunzip -f "$entry" > /dev/null 2>&1
                     fi
                     ;;
                 *.zip)
-                    echo "Extracting: $entry"
                     new_dir="${entry%.*}"
                     rm -rf "$new_dir"
                     mkdir -p "$new_dir"
-                    unzip -o "$entry" -d "$new_dir" && rm "$entry"
-                    queue+=("$new_dir")
+                    unzip -o "$entry" -d "$new_dir" > /dev/null 2>&1 && rm "$entry"
+
+                    [[ "$recursive" == true ]] && queue+=("$new_dir")
                     ;;
+                *)
+                    (( failure_counter++ ))
+                    continue 
+                    ;;
+            
             esac
+            (( decompressed_counter++ ))
         done
     done
 }
@@ -113,4 +115,7 @@ extract_and_queue "$(pwd)"
 #         esac
 #     fi
 # done
-echo "Decompressed $counter archive(s)"
+echo "Decompressed $decompressed_counter archive(s)"
+
+
+exit $failure_counter
