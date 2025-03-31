@@ -4,6 +4,7 @@ recursive=false
 verbose=false
 decompressed_counter=0 
 failure_counter=0 
+queue=()
 
 # Parse options
 while getopts "rv" opt; do
@@ -27,21 +28,20 @@ fi
 extract_file() {
     
     local entry="$1"
-    local -n queue_ref="$2"  # Use a reference to the queue passed from the main function
     case "$entry" in
         *.tar.gz|*.tgz)
             new_dir="${entry%.*}"  # Remove .tar.gz
             rm -rf "$new_dir"
             mkdir -p "$new_dir"
             tar -xzf "$entry" -C "$new_dir" > /dev/null 2>&1 && rm "$entry"
-            [[ "$recursive" == true ]] && queue_ref+=("$new_dir")
+            [[ "$recursive" == true ]] && queue+=("$new_dir")
             ;;
         *.tar.bz2)
             new_dir="${entry%.*}"
             rm -rf "$new_dir"
             mkdir -p "$new_dir"
             tar -xjf "$entry" -C "$new_dir" > /dev/null 2>&1 && rm "$entry"
-            [[ "$recursive" == true ]] && queue_ref+=("$new_dir")
+            [[ "$recursive" == true ]] && queue+=("$new_dir")
             ;;
         *.bz2)
             bunzip2 -f "$entry" > /dev/null 2>&1
@@ -52,7 +52,7 @@ extract_file() {
                 new_dir="${entry%.*}"
                 mkdir -p "$new_dir"
                 tar -xzf "$entry" -C "$new_dir" > /dev/null 2>&1 && rm "$entry"
-                [[ "$recursive" == true ]] && queue_ref+=("$new_dir")
+                [[ "$recursive" == true ]] && queue+=("$new_dir")
             else
                 gunzip -f "$entry" > /dev/null 2>&1
             fi
@@ -62,7 +62,7 @@ extract_file() {
             rm -rf "$new_dir"
             mkdir -p "$new_dir"
             unzip -o "$entry" -d "$new_dir" > /dev/null 2>&1 && rm "$entry"
-            [[ "$recursive" == true ]] && queue_ref+=("$new_dir")
+            [[ "$recursive" == true ]] && queue+=("$new_dir")
             ;;
         *)
             (( failure_counter++ ))
@@ -70,12 +70,11 @@ extract_file() {
             ;;
     esac
     (( decompressed_counter++ ))
+  
 }
 
 
 extract_and_queue() {
-    local queue="$1"
-
 
     while [[ ${#queue[@]} -gt 0 ]]; do
         current_dir="${queue[0]}"
@@ -91,38 +90,28 @@ extract_and_queue() {
                 continue  # Skip extraction, process next entry
             fi
             
-            extract_file "$entry" queue
+            extract_file "$entry"
             
         done
     done
 }
 
 
+for file in "$@"; do
+    if [ -f "$file" ]; then
+        extract_file $file
+    fi
+    
+    if [[ -d "$file" ]] && [[ "$recursive" == true ]]; then
+        queue+=("$file")
+    fi
+    
+    extract_and_queue
+
+done
 
 
-extract_and_queue "$(pwd)"
-
-# queue=()
-# extract_file "$(pwd)"/develeap-bash.zip queue
-
-# for file in "$@"; do
-#     if [ -f "$file" ]; then
-#         # Extract the archive
-#         case "$file" in
-#             *.tar.gz|*.tgz|*.tar.bz2|*.tbz|*.tar|*.zip|*.gz|*.bz2|*.Z)
-#                 handle_archive "$file" "$(pwd)"
-#                 ;;
-#             *)
-#                 if [ "$verbose" = true ]; then
-#                     base_name=$(basename "$file")  # Get filename with extension
-#                     file_name="${base_name%.*}"    # Remove only last extension (keeps base name)
-#                     echo "Ignoring " $file_name
-#                 fi
-#                 ;;
-#         esac
-#     fi
-# done
 echo "Decompressed $decompressed_counter archive(s)"
-
-
 exit $failure_counter
+
+# TODO : print -v / dont remove archived 
