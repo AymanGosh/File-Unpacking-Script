@@ -83,7 +83,7 @@ extract_file() {
 }
 
 
-extract_and_queue() {
+bfs_extract_and_queue() {
     while [[ ${#queue[@]} -gt 0 ]]; do
         current_dir="${queue[0]}"
         queue=("${queue[@]:1}")  # Remove first element
@@ -121,7 +121,7 @@ for file in "$@"; do
             queue+=("$file")
         fi
         
-        extract_and_queue
+        bfs_extract_and_queue
 
     done
 done
